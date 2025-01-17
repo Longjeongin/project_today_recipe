@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "//mybatis.org/DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myproject.my.member.dao.IMemberDAO">
+	
+	<insert id="registMember" parameterType="MemberVO">
+		INSERT INTO members(mem_id
+						  , mem_pw
+						  , mem_nm
+						  , mem_email)
+		VALUES(#{memId}
+			 , #{memPw}
+			 , #{memNm}
+			 , #{memEmail})
+	</insert>
+	
+	<select id="loginMember" parameterType="MemberVO" resultType="MemberVO">
+		SELECT mem_id
+			 , mem_pw
+			 , mem_nm
+			 , mem_email
+			 , profile_img
+	 	FROM members
+	 	WHERE mem_id = #{memId}
+	 	AND use_yn = 'Y'
+	</select>
+	
+	<update id="profileUpload" parameterType="MemberVO">
+		UPDATE members
+		SET profile_img = #{profileImg}
+		WHERE mem_id = #{memId}
+	</update>
+	
+	<select id="idCheck" parameterType="String" resultType="int">
+		SELECT COUNT(mem_id) as cnt
+		FROM members
+		WHERE mem_id = #{memId}
+	</select>
+	
+	<update id="changeProfile" parameterType="MemberVO">
+		UPDATE members
+		SET mem_nm = #{memNm}
+		  , mem_email = #{memEmail}
+		WHERE mem_id = #{memId}
+		AND use_yn = 'Y'
+	</update>
+	
+	
+</mapper>

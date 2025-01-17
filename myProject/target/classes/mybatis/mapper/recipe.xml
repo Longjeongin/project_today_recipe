@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "//mybatis.org/DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myproject.my.recipe.dao.IRecipeDAO">
+	
+	<select id="getCatList" resultType="RecipeVO">
+		SELECT cat_name, recipe_cat
+		FROM cat_name
+	</select>
+	
+<!-- 	<select id="getRecipeList" resultType="RecipeVO"> -->
+<!-- 		SELECT * -->
+<!-- 		FROM(SELECT rownum as rnum, a.* -->
+<!-- 			FROM( -->
+<!-- 				SELECT REGEXP_REPLACE(a.recipe_name, '^\[.+.\] ', '') as recipe_name -->
+<!-- 				     , a.recipe_id -->
+<!-- 				     , a.recipe_img -->
+<!-- 				     , DECODE(a.recipe_level, 1, '쉬움', 2, '보통', 3, '어려움') as recipe_level -->
+<!-- 				     , b.recipe_des -->
+<!-- 				     , a.recipe_token -->
+<!-- 				FROM recipe_info a -->
+<!-- 				   , recipe_ingr b -->
+<!-- 				   , cat_name c -->
+<!-- 				   , recipe_cats d -->
+<!-- 				WHERE a.recipe_id = b.recipe_id -->
+<!-- 				AND a.recipe_id = d.recipe_id -->
+<!-- 				AND c.recipe_cat = d.recipe_cat -->
+<!-- 				<include refid="catSelect"></include> -->
+<!-- 				<include refid="wordSearch"></include> -->
+<!-- 				GROUP BY a.recipe_name,a.recipe_id,a.recipe_img, a.recipe_level, b.recipe_des, a.recipe_token -->
+<!-- 				)a -->
+<!-- 			) b -->
+<!-- 		WHERE rnum BETWEEN #{firstRow} AND #{lastRow} -->
+<!-- 	</select> -->
+	
+	<select id="getRecipeList" resultType="RecipeVO">
+		SELECT *
+		FROM(SELECT rownum as rnum, a.*
+			FROM(
+				SELECT REGEXP_REPLACE(a.recipe_name, '^\[.+.\] ', '') as recipe_name
+				     , a.recipe_id
+				     , a.recipe_img
+				     , DECODE(a.recipe_level, 1, '쉬움', 2, '보통', 3, '어려움') as recipe_level
+				     , d.recipe_des
+				     , a.recipe_token
+				FROM recipe_info a
+                JOIN recipe_cats b ON a.recipe_id = b.recipe_id
+                JOIN cat_name c ON c.recipe_cat = b.recipe_cat
+                JOIN recipe_ingr d ON a.recipe_id = d.recipe_id
+				<if test="searchType == 1">
+					<include refid="titleSearch"></include>
+					<include refid="catSelect"></include>
+				</if>
+				<if test="searchType == 2">
+					<include refid="wordSearch"></include>
+    	            <include refid="catSelect"></include>
+				</if>
+				GROUP BY a.recipe_name,a.recipe_id,a.recipe_img, a.recipe_level, d.recipe_des, a.recipe_token
+				)a
+			) b
+		WHERE rnum BETWEEN #{firstRow} AND #{lastRow}
+	</select>
+	
+	<sql id="titleSearch">
+		<if test="!@org.apache.commons.lang3.StringUtils@isBlank(searchWordString)">
+			JOIN recipe_info f ON a.recipe_id = f.recipe_id AND f.recipe_name LIKE '%${searchWordString}%'
+		</if>
+	</sql>
+
+	<sql id="catSelect">
+		<if test="!@org.apache.commons.lang3.StringUtils@isBlank(searchCategory)">
+			WHERE b.recipe_cat = #{searchCategory}
+		</if>
+	</sql>
+		
+	<sql id="wordSearch">
+		<if test="@org.apache.commons.lang3.ObjectUtils@isNotEmpty(searchWord)">
+			<foreach collection="searchWord" item="word" index="i">
+				JOIN recipe_ingr e${i} ON a.recipe_id = e${i}.recipe_id AND e${i}.ingr_name LIKE '%${word}%'
+			</foreach> 
+		</if>
+	</sql>
+	
+<!-- 	<select id="getTotalRowCount" resultType="int" parameterType="SearchVO"> -->
+<!-- 		SELECT COUNT(DISTINCT(a.recipe_id)) as recipe_id -->
+<!-- 		FROM recipe_info a -->
+<!-- 		   , recipe_cats b -->
+<!-- 		   , recipe_ingr c -->
+<!-- 		WHERE a.recipe_id = b.recipe_id -->
+<!-- 		AND a.recipe_id = c.recipe_id -->
+<!-- 		<include refid="catSelect2"></include> -->
+<!-- 		<include refid="wordSearch2"></include> -->
+<!-- 	</select> -->
+
+	<select id="getTotalRowCount" resultType="int" parameterType="SearchVO">
+		SELECT COUNT(DISTINCT(a.recipe_id)) as recipe_id
+		FROM recipe_info a
+		JOIN recipe_cats b ON a.recipe_id = b.recipe_id
+		<if test="searchType == 1">
+			<include refid="titleSearch2"></include>
+			<include refid="catSelect2"></include>
+		</if>
+		<if test="searchType == 2">
+			<include refid="wordSearch2"></include>
+			<include refid="catSelect2"></include>
+		</if>
+	</select>
+	
+	<sql id="titleSearch2">
+		<if test="!@org.apache.commons.lang3.StringUtils@isBlank(searchWordString)">
+			JOIN recipe_info d ON a.recipe_id = d.recipe_id AND d.recipe_name LIKE '%${searchWordString}%'
+		</if>
+	</sql>
+	
+	<sql id="catSelect2">
+		<if test="!@org.apache.commons.lang3.StringUtils@isBlank(searchCategory)">
+			WHERE b.recipe_cat = #{searchCategory}
+		</if>
+	</sql>
+	
+	<sql id="wordSearch2">
+		<if test="@org.apache.commons.lang3.ObjectUtils@isNotEmpty(searchWord)">
+			<foreach collection="searchWord" item="word" index="i">
+				JOIN recipe_ingr c${i} ON a.recipe_id = c${i}.recipe_id AND c${i}.ingr_name LIKE '%${word}%' 
+			</foreach>
+		</if>
+	</sql>
+		
+	<select id="getRecipeByToken" parameterType="String" resultType="RecipeVO">
+		SELECT REGEXP_REPLACE(a.recipe_name, '^\[.+.\] ', '') as recipe_name
+			 , a.recipe_id
+		     , a.recipe_img
+		     , a.recipe_token
+		     , DECODE(a.recipe_level, 1, '쉬움', 2, '보통', 3, '어려움') as recipe_level
+		     , b.recipe_des
+		FROM recipe_info a, recipe_ingr b
+		WHERE a.recipe_id = b.recipe_id
+		AND a.recipe_token = #{recipeToken}
+		GROUP BY a.recipe_name, a.recipe_id, a.recipe_img, a.recipe_token, a.recipe_level, b.recipe_des
+		ORDER BY a.recipe_id, b.recipe_des
+	</select>
+	
+	<select id="getIngrType" parameterType="int" resultType="RecipeDetailVO">
+		SELECT recipe_id, ingr_type
+		FROM recipe_ingr
+		WHERE recipe_id = #{recipeId}
+		GROUP BY recipe_id, ingr_type
+		ORDER BY recipe_id, ingr_type
+	</select>
+
+	<select id="getRecipeDetail" parameterType="int" resultType="RecipeDetailVO">
+		SELECT ingr_type, ingr_name, ingr_ea
+		FROM recipe_ingr
+		WHERE recipe_id = #{recipeId}
+		ORDER BY recipe_id, ingr_type
+	</select>
+	
+	<select id="getRecipeStep" parameterType="int" resultType="RecipeStepVO">
+		SELECT recipe_step_no
+		     , recipe_step
+		FROM recipe_steps
+		WHERE recipe_id= #{recipeId}
+		ORDER BY recipe_step_no
+	</select>
+	
+	
+</mapper>
